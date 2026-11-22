@@ -90,7 +90,15 @@ export default function MaintenancePage() {
 
   return (
     <div>
-      <PageHeader title="Maintenance" description="Track and resolve facility maintenance requests" />
+      <PageHeader
+        title="Maintenance"
+        description="Track and resolve facility maintenance requests"
+        actions={
+          <Button onClick={() => setOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" /> New Request
+          </Button>
+        }
+      />
       <div className="glass-card overflow-hidden">
         <Table>
           <TableHeader><TableRow><TableHead>Title</TableHead><TableHead>Category</TableHead><TableHead>Priority</TableHead><TableHead>Status</TableHead><TableHead>Scheduled</TableHead><TableHead className="w-[140px]">Actions</TableHead></TableRow></TableHeader>
@@ -115,6 +123,83 @@ export default function MaintenancePage() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Create Maintenance Request Dialog */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>New Maintenance Request</DialogTitle></DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Building *</Label>
+              <select
+                className="flex h-10 w-full rounded-xl border border-blue-200/50 dark:border-blue-800/30 bg-white/70 dark:bg-slate-800/50 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/40"
+                value={form.buildingId}
+                onChange={(e) => setForm({ ...form, buildingId: e.target.value })}
+                required
+              >
+                <option value="">Select building</option>
+                {(buildings || []).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+              {errors.buildingId && <p className="text-xs text-red-500">{errors.buildingId}</p>}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Title *</Label>
+              <Input
+                placeholder="e.g. Water heater repair on 3rd floor"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                required
+              />
+              {errors.title && <p className="text-xs text-red-500">{errors.title}</p>}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Category</Label>
+                <select
+                  className="flex h-10 w-full rounded-xl border border-blue-200/50 dark:border-blue-800/30 bg-white/70 dark:bg-slate-800/50 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/40"
+                  value={form.category}
+                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                >
+                  {['GENERAL', 'PLUMBING', 'ELECTRICAL', 'CARPENTRY', 'APPLIANCE', 'PAINTING', 'CLEANING', 'SECURITY', 'OTHER'].map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Priority</Label>
+                <select
+                  className="flex h-10 w-full rounded-xl border border-blue-200/50 dark:border-blue-800/30 bg-white/70 dark:bg-slate-800/50 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/40"
+                  value={form.priority}
+                  onChange={(e) => setForm({ ...form, priority: e.target.value })}
+                >
+                  {['LOW', 'MEDIUM', 'HIGH', 'URGENT'].map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Description *</Label>
+              <textarea
+                className="flex w-full rounded-xl border border-blue-200/50 dark:border-blue-800/30 bg-white/70 dark:bg-slate-800/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/40"
+                rows={3}
+                placeholder="Describe what needs maintenance (min 10 characters)..."
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                required
+              />
+              {errors.description && <p className="text-xs text-red-500">{errors.description}</p>}
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={createMutation.isPending}>
+                {createMutation.isPending ? 'Creating...' : 'Create Request'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Detail Dialog */}
       <Dialog open={detailOpen} onOpenChange={(v) => { setDetailOpen(v); if (!v) setSelectedId(null); }}>

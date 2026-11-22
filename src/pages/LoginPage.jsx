@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Building2, Users, IndianRupee, Shield, Bed, BarChart3, Utensils, Megaphone, MessageSquare, Bell, ChevronDown, Check, Smartphone, Globe, Zap, ArrowRight, Star } from 'lucide-react';
+import { Loader2, Building2, Users, IndianRupee, Shield, Bed, BarChart3, Utensils, Megaphone, MessageSquare, Bell, ChevronDown, Check, Smartphone, Globe, Zap, ArrowRight, Star, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -46,15 +46,28 @@ function AnimatedCounter({ end, suffix = '' }) {
 }
 
 export default function LoginPage() {
+  const [mode, setMode] = useState('signin'); // 'signin' | 'signup'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showSignInPassword, setShowSignInPassword] = useState(false);
+  const [signupForm, setSignupForm] = useState({
+    businessName: '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    password: '',
+  });
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showLogin, setShowLogin] = useState(false);
   const setAuth = useAuthStore((s) => s.setAuth);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -69,6 +82,56 @@ export default function LoginPage() {
     }
   };
 
+  const handleSignupSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    // Phone validation: must be digits only and exactly 10 digits
+    if (!/^\d{10}$/.test(signupForm.phone)) {
+      setError('Phone number must be exactly 10 digits');
+      return;
+    }
+
+    // Password length validation
+    if (signupForm.password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+
+    // Confirm password check
+    if (signupForm.password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data } = await api.post('/auth/signup', signupForm);
+      setAuth(data.data);
+      navigate('/');
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.response?.data?.errors?.[0]?.message || 'Registration failed';
+      setError(errMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openSignIn = () => {
+    setMode('signin');
+    setError('');
+    setShowSignInPassword(false);
+    setShowLogin(true);
+  };
+
+  const openSignUp = () => {
+    setMode('signup');
+    setError('');
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+    setShowLogin(true);
+  };
+
   return (
     <div className="min-h-screen bg-[#fafbff] dark:bg-[#0a0e1a]">
       {/* ═══ NAVBAR ═══ */}
@@ -81,8 +144,11 @@ export default function LoginPage() {
           <div className="flex items-center gap-4">
             <a href="#features" className="hidden sm:block text-sm text-slate-600 dark:text-slate-400 hover:text-blue-600 font-medium transition-colors">Features</a>
             <a href="#why" className="hidden sm:block text-sm text-slate-600 dark:text-slate-400 hover:text-blue-600 font-medium transition-colors">Why EzeHub</a>
-            <Button onClick={() => setShowLogin(true)} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full shadow-lg shadow-blue-500/30 px-6 hover:shadow-xl hover:shadow-blue-500/40 transition-all">
+            <Button variant="ghost" onClick={openSignIn} className="text-sm font-semibold hover:text-blue-600">
               Sign In
+            </Button>
+            <Button onClick={openSignUp} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full shadow-lg shadow-blue-500/30 px-6 hover:shadow-xl hover:shadow-blue-500/40 transition-all">
+              Sign Up
             </Button>
           </div>
         </div>
@@ -112,7 +178,7 @@ export default function LoginPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-            <Button onClick={() => setShowLogin(true)} size="lg" className="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 text-white rounded-full shadow-2xl shadow-blue-500/30 h-14 px-10 text-lg font-semibold hover:shadow-blue-500/50 transition-all hover:scale-[1.02]">
+            <Button onClick={openSignUp} size="lg" className="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 text-white rounded-full shadow-2xl shadow-blue-500/30 h-14 px-10 text-lg font-semibold hover:shadow-blue-500/50 transition-all hover:scale-[1.02]">
               Get Started Free <ArrowRight className="h-5 w-5 ml-2" />
             </Button>
             <a href="#features">
@@ -229,10 +295,15 @@ export default function LoginPage() {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-white/[0.02] rounded-full"></div>
             <div className="relative z-10 text-center">
               <h2 className="text-4xl md:text-5xl font-extrabold mb-4">Start Managing Today</h2>
-              <p className="text-blue-100 text-xl mb-10 max-w-xl mx-auto">Sign in to access your full management dashboard. Your PG deserves better tools.</p>
-              <Button onClick={() => setShowLogin(true)} size="lg" className="bg-white text-blue-700 hover:bg-blue-50 rounded-full h-14 px-10 text-lg font-bold shadow-2xl hover:scale-[1.02] transition-all">
-                Sign In to Dashboard <ArrowRight className="h-5 w-5 ml-2" />
-              </Button>
+              <p className="text-blue-100 text-xl mb-10 max-w-xl mx-auto">Create your account or sign in to access your full management dashboard. Your PG deserves better tools.</p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button onClick={openSignUp} size="lg" className="bg-white text-blue-700 hover:bg-blue-50 rounded-full h-14 px-10 text-lg font-bold shadow-2xl hover:scale-[1.02] transition-all">
+                  Create Free Account <ArrowRight className="h-5 w-5 ml-2" />
+                </Button>
+                <Button onClick={openSignIn} variant="outline" size="lg" className="border-2 border-white/40 text-white hover:bg-white/10 rounded-full h-14 px-8 text-lg font-semibold transition-all">
+                  Sign In
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -249,35 +320,251 @@ export default function LoginPage() {
         </div>
       </footer>
 
-      {/* ═══ LOGIN MODAL ═══ */}
+      {/* ═══ AUTH MODAL ═══ */}
       {showLogin && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md" onClick={() => setShowLogin(false)}>
-          <div className="w-full max-w-md mx-4 bg-white dark:bg-slate-900 rounded-3xl shadow-2xl shadow-blue-500/10 p-8 border border-slate-200/50 dark:border-slate-800/50 animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            <div className="text-center mb-8">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 font-bold text-2xl text-white shadow-xl shadow-blue-500/30 mx-auto mb-4">E</div>
-              <h2 className="text-2xl font-extrabold text-slate-800 dark:text-white">Welcome Back</h2>
-              <p className="text-sm text-slate-500 mt-1">Sign in to your dashboard</p>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4" onClick={() => setShowLogin(false)}>
+          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl shadow-blue-500/10 p-8 border border-slate-200/50 dark:border-slate-800/50 animate-in fade-in zoom-in-95 duration-200 max-h-[95vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="text-center mb-6">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 font-bold text-xl text-white shadow-xl shadow-blue-500/30 mx-auto mb-3">E</div>
+              <h2 className="text-2xl font-extrabold text-slate-800 dark:text-white">
+                {mode === 'signin' ? 'Welcome Back' : 'Create Your Account'}
+              </h2>
+              <p className="text-sm text-slate-500 mt-1">
+                {mode === 'signin' ? 'Sign in to your management dashboard' : 'Get started with EzeHub in less than 2 minutes'}
+              </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {error && (
-                <div className="rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200/50 px-4 py-3 text-sm text-red-600 dark:text-red-400 text-center">{error}</div>
-              )}
-              <div className="space-y-2">
-                <Label className="text-slate-700 dark:text-slate-300 font-medium">Email</Label>
-                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@example.com" className="rounded-xl h-12 text-base" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-slate-700 dark:text-slate-300 font-medium">Password</Label>
-                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="••••••••" className="rounded-xl h-12 text-base" />
-              </div>
-              <Button type="submit" className="w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 text-white rounded-xl h-12 text-base font-bold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/40 transition-all" disabled={loading}>
-                {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            {/* Mode Switcher Tabs */}
+            <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-6">
+              <button
+                type="button"
+                onClick={() => { setMode('signin'); setError(''); }}
+                className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
+                  mode === 'signin'
+                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
                 Sign In
-              </Button>
-            </form>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMode('signup'); setError(''); }}
+                className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
+                  mode === 'signup'
+                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                Sign Up
+              </button>
+            </div>
 
-            <button onClick={() => setShowLogin(false)} className="mt-6 w-full text-center text-sm text-slate-400 hover:text-slate-600 transition-colors">← Back to homepage</button>
+            {error && (
+              <div className="mb-5 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200/50 px-4 py-3 text-sm text-red-600 dark:text-red-400 text-center">
+                {error}
+              </div>
+            )}
+
+            {mode === 'signin' ? (
+              <form onSubmit={handleLoginSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-slate-700 dark:text-slate-300 font-medium text-sm">Email</Label>
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    placeholder="you@example.com"
+                    className="rounded-xl h-11 text-base"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-slate-700 dark:text-slate-300 font-medium text-sm">Password</Label>
+                  <div className="relative">
+                    <Input
+                      type={showSignInPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      placeholder="••••••••"
+                      className="rounded-xl h-11 text-base pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSignInPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors focus:outline-none"
+                      tabIndex={-1}
+                      aria-label={showSignInPassword ? "Hide password" : "Show password"}
+                    >
+                      {showSignInPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 text-white rounded-xl h-12 text-base font-bold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/40 transition-all mt-2"
+                  disabled={loading}
+                >
+                  {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Sign In
+                </Button>
+                <div className="pt-2 text-center text-sm text-slate-500">
+                  Don't have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => { setMode('signup'); setError(''); }}
+                    className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+                  >
+                    Sign up free
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleSignupSubmit} className="space-y-3.5">
+                <div className="space-y-1.5">
+                  <Label className="text-slate-700 dark:text-slate-300 font-medium text-sm">PG / Business Name</Label>
+                  <Input
+                    type="text"
+                    value={signupForm.businessName}
+                    onChange={(e) => setSignupForm({ ...signupForm, businessName: e.target.value })}
+                    required
+                    placeholder="e.g. Royal Living PG"
+                    className="rounded-xl h-10 text-sm"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-slate-700 dark:text-slate-300 font-medium text-sm">First Name</Label>
+                    <Input
+                      type="text"
+                      value={signupForm.firstName}
+                      onChange={(e) => setSignupForm({ ...signupForm, firstName: e.target.value })}
+                      required
+                      placeholder="John"
+                      className="rounded-xl h-10 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-slate-700 dark:text-slate-300 font-medium text-sm">Last Name</Label>
+                    <Input
+                      type="text"
+                      value={signupForm.lastName}
+                      onChange={(e) => setSignupForm({ ...signupForm, lastName: e.target.value })}
+                      required
+                      placeholder="Doe"
+                      className="rounded-xl h-10 text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-slate-700 dark:text-slate-300 font-medium text-sm">Email</Label>
+                    <Input
+                      type="email"
+                      value={signupForm.email}
+                      onChange={(e) => setSignupForm({ ...signupForm, email: e.target.value })}
+                      required
+                      placeholder="owner@example.com"
+                      className="rounded-xl h-10 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-slate-700 dark:text-slate-300 font-medium text-sm">Phone Number</Label>
+                      <span className="text-[11px] text-slate-400 font-mono">{signupForm.phone.length}/10</span>
+                    </div>
+                    <Input
+                      type="tel"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={10}
+                      value={signupForm.phone}
+                      onChange={(e) => {
+                        const numericVal = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setSignupForm({ ...signupForm, phone: numericVal });
+                      }}
+                      required
+                      placeholder="9876543210"
+                      className="rounded-xl h-10 text-sm font-mono tracking-wider"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-slate-700 dark:text-slate-300 font-medium text-sm">Password</Label>
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? 'text' : 'password'}
+                        value={signupForm.password}
+                        onChange={(e) => setSignupForm({ ...signupForm, password: e.target.value })}
+                        required
+                        minLength={8}
+                        placeholder="••••••••"
+                        className="rounded-xl h-10 text-sm pr-9"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((v) => !v)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors focus:outline-none"
+                        tabIndex={-1}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-slate-700 dark:text-slate-300 font-medium text-sm">Confirm Password</Label>
+                    <div className="relative">
+                      <Input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                        minLength={8}
+                        placeholder="••••••••"
+                        className="rounded-xl h-10 text-sm pr-9"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword((v) => !v)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors focus:outline-none"
+                        tabIndex={-1}
+                        aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 text-white rounded-xl h-11 text-base font-bold shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/40 transition-all mt-3"
+                  disabled={loading}
+                >
+                  {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Get Started Free
+                </Button>
+                <div className="pt-1 text-center text-sm text-slate-500">
+                  Already have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => { setMode('signin'); setError(''); }}
+                    className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+                  >
+                    Sign in
+                  </button>
+                </div>
+              </form>
+            )}
+
+            <button
+              onClick={() => setShowLogin(false)}
+              className="mt-5 w-full text-center text-xs text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              ← Back to homepage
+            </button>
           </div>
         </div>
       )}
