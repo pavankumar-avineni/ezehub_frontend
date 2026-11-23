@@ -49,10 +49,8 @@ export default function StaffPage() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Match backend createStaffSchema: a login account needs a role and an
-    // 8+ character password. Guard here so the user gets instant feedback.
+    if (!form.roleId) { alert('Please select a role for this staff member.'); return; }
     if (createLogin) {
-      if (!form.roleId) { alert('Select a role before creating login credentials.'); return; }
       if (!form.password || form.password.length < 8) { alert('Login password must be at least 8 characters.'); return; }
     }
     const payload = {
