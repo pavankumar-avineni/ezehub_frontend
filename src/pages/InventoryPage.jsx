@@ -63,7 +63,14 @@ export default function InventoryPage() {
           <DialogTrigger asChild><Button><Plus className="h-4 w-4" /> Add Item</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Add Inventory Item</DialogTitle></DialogHeader>
-            <form onSubmit={(e) => { e.preventDefault(); createMutation.mutate({ ...form, purchasePrice: form.purchasePrice ? Number(form.purchasePrice) : undefined }); }} className="space-y-4">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              createMutation.mutate({
+                ...form,
+                purchasePrice: form.purchasePrice ? Number(form.purchasePrice) : undefined,
+                purchaseDate: form.purchaseDate ? new Date(form.purchaseDate).toISOString() : undefined,
+              });
+            }} className="space-y-4">
               <div className="space-y-2">
                 <Label>Building</Label>
                 <select className="flex h-10 w-full rounded-xl border border-blue-200/50 dark:border-blue-800/30 bg-white/70 dark:bg-slate-800/50 backdrop-blur-sm px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/40 transition-all" value={form.buildingId} onChange={(e) => setForm({ ...form, buildingId: e.target.value })} required>
@@ -85,7 +92,8 @@ export default function InventoryPage() {
                     {['NEW', 'GOOD', 'FAIR', 'POOR', 'DAMAGED'].map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
-                <div className="space-y-2 col-span-2"><Label>Purchase Price</Label><Input type="number" value={form.purchasePrice} onChange={(e) => setForm({ ...form, purchasePrice: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Purchase Price (₹)</Label><Input type="number" value={form.purchasePrice} onChange={(e) => setForm({ ...form, purchasePrice: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Purchase Date</Label><Input type="date" value={form.purchaseDate} onChange={(e) => setForm({ ...form, purchaseDate: e.target.value })} /></div>
               </div>
               {createMutation.error && <p className="text-sm text-red-500">{createMutation.error.response?.data?.message}</p>}
               <DialogFooter><Button type="submit" disabled={createMutation.isPending}>Add Item</Button></DialogFooter>
