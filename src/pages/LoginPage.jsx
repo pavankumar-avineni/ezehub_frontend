@@ -6,6 +6,8 @@ import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { errorMessage } from '@/lib/errors';
+import PricingSection, { usePublicPricing } from '@/components/shared/PricingSection';
 
 const FEATURES = [
   { icon: Building2, title: 'Multi-Building Management', desc: 'Manage unlimited buildings, floors, rooms & beds with real-time occupancy and visual maps.', color: 'from-blue-500 to-cyan-500' },
@@ -65,6 +67,8 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [showLogin, setShowLogin] = useState(false);
   const setAuth = useAuthStore((s) => s.setAuth);
+  const { data: pricing } = usePublicPricing();
+  const trialLabel = pricing?.trialDays > 0 ? `${pricing.trialDays}-day free trial` : 'Free to start';
   const navigate = useNavigate();
 
   const handleLoginSubmit = async (e) => {
@@ -110,8 +114,7 @@ export default function LoginPage() {
       setAuth(data.data);
       navigate('/');
     } catch (err) {
-      const errMsg = err.response?.data?.message || err.response?.data?.errors?.[0]?.message || 'Registration failed';
-      setError(errMsg);
+      setError(errorMessage(err) || 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -143,6 +146,7 @@ export default function LoginPage() {
           </div>
           <div className="flex items-center gap-4">
             <a href="#features" className="hidden sm:block text-sm text-slate-600 dark:text-slate-400 hover:text-blue-600 font-medium transition-colors">Features</a>
+            <a href="#pricing" className="hidden sm:block text-sm text-slate-600 dark:text-slate-400 hover:text-blue-600 font-medium transition-colors">Pricing</a>
             <a href="#why" className="hidden sm:block text-sm text-slate-600 dark:text-slate-400 hover:text-blue-600 font-medium transition-colors">Why EzeHub</a>
             <Button variant="ghost" onClick={openSignIn} className="text-sm font-semibold hover:text-blue-600">
               Sign In
@@ -179,7 +183,7 @@ export default function LoginPage() {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
             <Button onClick={openSignUp} size="lg" className="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 text-white rounded-full shadow-2xl shadow-blue-500/30 h-14 px-10 text-lg font-semibold hover:shadow-blue-500/50 transition-all hover:scale-[1.02]">
-              Get Started Free <ArrowRight className="h-5 w-5 ml-2" />
+              Start Free Trial <ArrowRight className="h-5 w-5 ml-2" />
             </Button>
             <a href="#features">
               <Button variant="outline" size="lg" className="rounded-full h-14 px-10 text-lg font-semibold border-2 border-slate-300 dark:border-slate-700 hover:border-blue-400 transition-all">
@@ -190,7 +194,7 @@ export default function LoginPage() {
 
           {/* Trust badges */}
           <div className="flex items-center justify-center gap-6 text-sm text-slate-500 dark:text-slate-500">
-            <span className="flex items-center gap-1.5"><Check className="h-4 w-4 text-green-500" /> Free to start</span>
+            <span className="flex items-center gap-1.5"><Check className="h-4 w-4 text-green-500" /> {trialLabel}</span>
             <span className="flex items-center gap-1.5"><Check className="h-4 w-4 text-green-500" /> No credit card</span>
             <span className="flex items-center gap-1.5"><Check className="h-4 w-4 text-green-500" /> Mobile apps included</span>
           </div>
@@ -237,6 +241,11 @@ export default function LoginPage() {
             ))}
           </div>
         </div>
+      </section>
+
+      {/* ═══ PRICING ═══ */}
+      <section id="pricing" className="py-24 px-6">
+        <PricingSection onGetStarted={openSignUp} />
       </section>
 
       {/* ═══ WHY EZEHUB ═══ */}
@@ -298,7 +307,7 @@ export default function LoginPage() {
               <p className="text-blue-100 text-xl mb-10 max-w-xl mx-auto">Create your account or sign in to access your full management dashboard. Your PG deserves better tools.</p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button onClick={openSignUp} size="lg" className="bg-white text-blue-700 hover:bg-blue-50 rounded-full h-14 px-10 text-lg font-bold shadow-2xl hover:scale-[1.02] transition-all">
-                  Create Free Account <ArrowRight className="h-5 w-5 ml-2" />
+                  Start Free Trial <ArrowRight className="h-5 w-5 ml-2" />
                 </Button>
                 <Button onClick={openSignIn} variant="outline" size="lg" className="border-2 border-white/40 text-white hover:bg-white/10 rounded-full h-14 px-8 text-lg font-semibold transition-all">
                   Sign In
@@ -330,7 +339,11 @@ export default function LoginPage() {
                 {mode === 'signin' ? 'Welcome Back' : 'Create Your Account'}
               </h2>
               <p className="text-sm text-slate-500 mt-1">
-                {mode === 'signin' ? 'Sign in to your management dashboard' : 'Get started with EzeHub in less than 2 minutes'}
+                {mode === 'signin'
+                  ? 'Sign in to your management dashboard'
+                  : pricing?.trialDays > 0
+                    ? `Start your ${pricing.trialDays}-day free trial. No plan to choose.`
+                    : 'Get started with EzeHub in less than 2 minutes'}
               </p>
             </div>
 
@@ -544,7 +557,7 @@ export default function LoginPage() {
                   disabled={loading}
                 >
                   {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                  Get Started Free
+                  Start Free Trial
                 </Button>
                 <div className="pt-1 text-center text-sm text-slate-500">
                   Already have an account?{' '}

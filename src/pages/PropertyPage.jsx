@@ -33,7 +33,8 @@ export default function PropertyPage() {
     queryKey: ['property-floors', selectedBuilding?.id],
     queryFn: async () => {
       const res = await api.get('/tenant/floors', { params: { buildingId: selectedBuilding.id, limit: 100 } });
-      return res.data.data || [];
+      // Only this building's floors, even if an older API ignores the buildingId filter.
+      return (res.data.data || []).filter((f) => (f.buildingId ?? f.building?.id) === selectedBuilding.id);
     },
     enabled: !!selectedBuilding && level === 'floors',
     staleTime: 0,

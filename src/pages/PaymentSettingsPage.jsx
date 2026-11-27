@@ -154,7 +154,7 @@ export default function PaymentSettingsPage() {
             <div>
               <Label>Razorpay Key Secret</Label>
               <Input type="password" value={form.razorpayKeySecret} onChange={handleChange('razorpayKeySecret')} placeholder="Enter key secret" />
-              <p className="text-xs text-slate-400 mt-1">Keep this confidential — never share</p>
+              <p className="text-xs text-slate-400 mt-1">Shown masked. Leave it unchanged to keep the stored secret, or type a new one to replace it</p>
             </div>
           </div>
           <p className="text-xs text-slate-500 mt-4">When configured, residents can pay rent directly through Razorpay checkout (UPI, Cards, Net Banking, Wallets). Money goes to your Razorpay account.</p>

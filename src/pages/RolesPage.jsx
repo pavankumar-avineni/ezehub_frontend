@@ -1,21 +1,116 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Shield, Check, X, Key } from 'lucide-react';
+import { Plus, Shield, Check, X, Key, Pencil, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ErrorText } from '@/components/inventory/common';
+import { fieldErrors } from '@/lib/errors';
+
+// The API rejects these with 403, so they never appear in the picker.
+const HIDDEN_PERMISSION_PREFIXES = ['tenants:', 'platform:'];
+const isAssignable = (p) => !HIDDEN_PERMISSION_PREFIXES.some((prefix) => (p.code || '').startsWith(prefix));
+
+function RoleFormDialog({ open, onOpenChange, role, permsByModule }) {
+  const isEdit = !!role;
+  const [form, setForm] = useState({ name: '', description: '' });
+  const [perms, setPerms] = useState([]);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (open) {
+      setForm({ name: role?.name || '', description: role?.description || '' });
+      setPerms([]);
+    }
+  }, [open, role]);
+
+  const mutation = useMutation({
+    mutationFn: (body) => (isEdit ? api.put(`/tenant/roles/${role.id}`, body) : api.post('/tenant/roles', body)),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['roles'] }); onOpenChange(false); },
+  });
+  const errs = fieldErrors(mutation.error);
+
+  const submit = () => {
+    const body = { name: form.name.trim(), ...(form.description.trim() && { description: form.description.trim() }) };
+    if (isEdit) {
+      const patch = {};
+      if (body.name !== role.name) patch.name = body.name;
+      if ((body.description || '') !== (role.description || '')) patch.description = body.description || '';
+      mutation.mutate(patch);
+    } else {
+      mutation.mutate({ ...body, permissionIds: perms });
+    }
+  };
+
+  const isDirty = !isEdit || form.name.trim() !== role.name || form.description.trim() !== (role.description || '');
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) mutation.reset(); onOpenChange(o); }}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>{isEdit ? `Edit ${role.name}` : 'Create New Role'}</DialogTitle></DialogHeader>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Role Name *</Label>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Warden, Accountant, Manager..." />
+              {errs.name && <p className="text-xs text-red-500">{errs.name}</p>}
+            </div>
+            <div>
+              <Label>Description</Label>
+              <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What this role does" />
+              {errs.description && <p className="text-xs text-red-500">{errs.description}</p>}
+            </div>
+          </div>
+
+          {!isEdit && (
+            <div className="border-t pt-4">
+              <p className="text-sm font-semibold text-slate-800 dark:text-white mb-3">Assign Permissions ({perms.length} selected)</p>
+              {Object.entries(permsByModule).map(([module, list]) => (
+                <div key={module} className="mb-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-xs font-bold text-blue-600 uppercase">{module}</p>
+                    <button type="button" className="text-[10px] text-blue-500 hover:underline" onClick={() => {
+                      const ids = list.map((p) => p.id);
+                      const all = ids.every((id) => perms.includes(id));
+                      setPerms((prev) => (all ? prev.filter((id) => !ids.includes(id)) : [...new Set([...prev, ...ids])]));
+                    }}>
+                      {list.every((p) => perms.includes(p.id)) ? 'Deselect All' : 'Select All'}
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-1">
+                    {list.map((p) => (
+                      <label key={p.id} className="flex items-center gap-2 text-xs cursor-pointer p-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800">
+                        <input type="checkbox" checked={perms.includes(p.id)} onChange={() => setPerms((prev) => (prev.includes(p.id) ? prev.filter((id) => id !== p.id) : [...prev, p.id]))} className="rounded border-blue-300" />
+                        <span className="text-slate-700 dark:text-slate-300">{p.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <ErrorText error={mutation.error && !Object.keys(errs).length ? mutation.error : null} />
+        </div>
+        <DialogFooter>
+          <Button onClick={submit} disabled={!form.name.trim() || !isDirty || mutation.isPending}>
+            {mutation.isPending ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Role'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function RolesPage() {
-  const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ name: '', description: '' });
-  const [newRolePerms, setNewRolePerms] = useState([]);
+  const [formRole, setFormRole] = useState(undefined); // undefined = closed, null = create, object = edit
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [expandedRole, setExpandedRole] = useState(null);
   const queryClient = useQueryClient();
 
-  const { data: roles } = useQuery({
+  const { data: roles, error: rolesError } = useQuery({
     queryKey: ['roles'],
     queryFn: async () => (await api.get('/tenant/roles')).data.data,
   });
@@ -25,42 +120,42 @@ export default function RolesPage() {
     queryFn: async () => (await api.get('/tenant/permissions')).data.data,
   });
 
-  const createMutation = useMutation({
-    mutationFn: (body) => api.post('/tenant/roles', body),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['roles'] }); setShowCreate(false); setForm({ name: '', description: '' }); setNewRolePerms([]); },
-  });
-
   const updatePermsMutation = useMutation({
     mutationFn: ({ roleId, permissionIds }) => api.put(`/tenant/roles/${roleId}/permissions`, { permissionIds }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['roles'] }),
   });
 
-  // Group permissions by module
-  const permsByModule = (permissions || []).reduce((acc, p) => {
-    if (!acc[p.module]) acc[p.module] = [];
-    acc[p.module].push(p);
+  const deleteMutation = useMutation({
+    mutationFn: (id) => api.delete(`/tenant/roles/${id}`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['roles'] }); setDeleteTarget(null); },
+  });
+
+  const assignable = useMemo(() => (permissions || []).filter(isAssignable), [permissions]);
+  const permsByModule = useMemo(() => assignable.reduce((acc, p) => {
+    (acc[p.module] ||= []).push(p);
     return acc;
-  }, {});
+  }, {}), [assignable]);
+
+  const permIdsOf = (role) => role.permissions?.map((rp) => rp.permission?.id || rp.permissionId) || [];
+  const hasPermission = (role, permId) => permIdsOf(role).includes(permId);
 
   const togglePermission = (role, permId) => {
-    const currentPerms = role.permissions?.map((rp) => rp.permission?.id || rp.permissionId) || [];
-    const newPerms = currentPerms.includes(permId)
-      ? currentPerms.filter((id) => id !== permId)
-      : [...currentPerms, permId];
-    updatePermsMutation.mutate({ roleId: role.id, permissionIds: newPerms });
+    const current = permIdsOf(role);
+    // Keep permissions that are hidden from the picker out of the payload (the API would reject them).
+    const hidden = new Set((permissions || []).filter((p) => !isAssignable(p)).map((p) => p.id));
+    const next = (current.includes(permId) ? current.filter((id) => id !== permId) : [...current, permId]).filter((id) => !hidden.has(id));
+    updatePermsMutation.mutate({ roleId: role.id, permissionIds: next });
   };
 
-  const hasPermission = (role, permId) => {
-    return role.permissions?.some((rp) => (rp.permission?.id || rp.permissionId) === permId);
-  };
+  const userCount = (role) => (role._count?.tenantUsers || 0) + (role._count?.staffMembers || 0);
 
   return (
     <div>
       <PageHeader title="Roles & Permissions" description="Create roles, assign permissions — staff sees only what their role allows" actions={
-        <Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4" /> Create Role</Button>
+        <Button onClick={() => setFormRole(null)}><Plus className="h-4 w-4" /> Create Role</Button>
       } />
+      <ErrorText error={rolesError || updatePermsMutation.error} />
 
-      {/* ═══ ROLES SECTION ═══ */}
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-4">
           <Shield className="h-5 w-5 text-blue-600" />
@@ -76,22 +171,30 @@ export default function RolesPage() {
                     <Shield className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-slate-800 dark:text-white">{role.name}</h3>
-                    <p className="text-xs text-slate-500">{role.code} • {role.permissions?.length || 0} permissions • {(role._count?.tenantUsers || 0) + (role._count?.staffMembers || 0)} users</p>
+                    <h3 className="font-semibold text-slate-800 dark:text-white">{role.name}{role.isSystem && <span className="ml-2 text-[10px] font-semibold uppercase text-amber-600">System</span>}</h3>
+                    <p className="text-xs text-slate-500">{role.code} • {role.permissions?.length || 0} permissions • {userCount(role)} users</p>
                   </div>
                 </div>
-                <span className="text-xs text-blue-600 font-medium">{expandedRole === role.id ? 'Hide ▲' : 'Show Permissions ▼'}</span>
+                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="icon" title={role.isSystem ? 'System roles cannot be edited' : 'Edit role'} disabled={role.isSystem} onClick={() => setFormRole(role)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" title={role.isSystem ? 'System roles cannot be deleted' : 'Delete role'} disabled={role.isSystem} onClick={() => { deleteMutation.reset(); setDeleteTarget(role); }}>
+                    <Trash2 className={`h-4 w-4 ${role.isSystem ? '' : 'text-red-400'}`} />
+                  </Button>
+                  <span className="ml-2 text-xs text-blue-600 font-medium">{expandedRole === role.id ? 'Hide ▲' : 'Show Permissions ▼'}</span>
+                </div>
               </div>
 
               {expandedRole === role.id && (
                 <div className="border-t border-blue-100/50 dark:border-blue-900/30 p-4 bg-slate-50/50 dark:bg-slate-900/30">
                   {role.isSystem && <p className="text-xs text-amber-600 mb-3">⚠️ System role — all permissions granted</p>}
                   <div className="space-y-4">
-                    {Object.entries(permsByModule).map(([module, perms]) => (
+                    {Object.entries(permsByModule).map(([module, list]) => (
                       <div key={module}>
                         <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">{module}</p>
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1.5">
-                          {perms.map((p) => {
+                          {list.map((p) => {
                             const active = hasPermission(role, p.id);
                             return (
                               <button
@@ -120,24 +223,22 @@ export default function RolesPage() {
         </div>
       </div>
 
-      {/* ═══ ALL PERMISSIONS SECTION ═══ */}
       <div>
         <div className="flex items-center gap-2 mb-4">
           <Key className="h-5 w-5 text-emerald-600" />
           <h2 className="text-lg font-semibold text-slate-800 dark:text-white">All Permissions</h2>
-          <span className="text-xs text-slate-400 ml-2">({permissions?.length || 0} total)</span>
+          <span className="text-xs text-slate-400 ml-2">({assignable.length} total)</span>
         </div>
-
         <div className="glass-card p-5">
           <div className="space-y-5">
-            {Object.entries(permsByModule).map(([module, perms]) => (
+            {Object.entries(permsByModule).map(([module, list]) => (
               <div key={module}>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">{module}</span>
-                  <span className="text-[10px] text-slate-400">({perms.length})</span>
+                  <span className="text-[10px] text-slate-400">({list.length})</span>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                  {perms.map((p) => (
+                  {list.map((p) => (
                     <div key={p.id} className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50">
                       <Key className="h-3 w-3 text-emerald-500 shrink-0" />
                       <div className="min-w-0">
@@ -153,47 +254,19 @@ export default function RolesPage() {
         </div>
       </div>
 
-      {/* Create Role Dialog */}
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Create New Role</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>Role Name *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Warden, Accountant, Manager..." /></div>
-              <div><Label>Description</Label><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What this role does" /></div>
-            </div>
+      <RoleFormDialog open={formRole !== undefined} onOpenChange={(o) => !o && setFormRole(undefined)} role={formRole || null} permsByModule={permsByModule} />
 
-            <div className="border-t pt-4">
-              <p className="text-sm font-semibold text-slate-800 dark:text-white mb-3">Assign Permissions ({newRolePerms.length} selected)</p>
-              {Object.entries(permsByModule).map(([module, perms]) => (
-                <div key={module} className="mb-3">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <p className="text-xs font-bold text-blue-600 uppercase">{module}</p>
-                    <button className="text-[10px] text-blue-500 hover:underline" onClick={() => {
-                      const modulePermIds = perms.map(p => p.id);
-                      const allSelected = modulePermIds.every(id => newRolePerms.includes(id));
-                      if (allSelected) setNewRolePerms(prev => prev.filter(id => !modulePermIds.includes(id)));
-                      else setNewRolePerms(prev => [...new Set([...prev, ...modulePermIds])]);
-                    }}>
-                      {perms.every(p => newRolePerms.includes(p.id)) ? 'Deselect All' : 'Select All'}
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-1">
-                    {perms.map((p) => (
-                      <label key={p.id} className="flex items-center gap-2 text-xs cursor-pointer p-1.5 rounded hover:bg-slate-50 dark:hover:bg-slate-800">
-                        <input type="checkbox" checked={newRolePerms.includes(p.id)} onChange={() => setNewRolePerms(prev => prev.includes(p.id) ? prev.filter(id => id !== p.id) : [...prev, p.id])} className="rounded border-blue-300" />
-                        <span className="text-slate-700 dark:text-slate-300">{p.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+      <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete role?</DialogTitle>
+            <DialogDescription>Delete <b>{deleteTarget?.name}</b>. Roles that are still assigned to users or staff cannot be deleted.</DialogDescription>
+          </DialogHeader>
+          <ErrorText error={deleteMutation.error} />
           <DialogFooter>
-            <span className="text-xs text-slate-500 mr-auto">{newRolePerms.length} permissions selected</span>
-            <Button onClick={() => createMutation.mutate({ ...form, permissionIds: newRolePerms })} disabled={!form.name.trim() || createMutation.isPending}>
-              {createMutation.isPending ? 'Creating...' : 'Create Role'}
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
+            <Button variant="destructive" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate(deleteTarget.id)}>
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
             </Button>
           </DialogFooter>
         </DialogContent>

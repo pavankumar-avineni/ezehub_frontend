@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Upload, Image } from 'lucide-react';
+import { useFeature } from '@/hooks/useFeature';
+import { FEATURE } from '@/lib/features';
 import api from '@/lib/api';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
@@ -13,6 +15,7 @@ import { formatDate } from '@/lib/utils';
 const CATEGORIES = ['FOOD', 'LAUNDRY', 'GYM', 'HOTEL', 'TRANSPORT', 'PG', 'CLOUD_KITCHEN', 'OTHER'];
 
 export default function PromotionsPage() {
+  const hasDocuments = useFeature(FEATURE.DOCUMENTS);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ businessName: '', category: 'FOOD', description: '', contactPhone: '', offerText: '', address: '', startDate: '', endDate: '' });
   const [photos, setPhotos] = useState([]);
@@ -108,8 +111,8 @@ export default function PromotionsPage() {
             <div><Label>Description</Label><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Healthy meals delivered daily" /></div>
             <div><Label>Address</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="123 Main Street" /></div>
 
-            {/* Image Upload */}
-            <div>
+            {/* Image Upload (uses the Documents add-on for storage) */}
+            {hasDocuments && <div>
               <Label>Photos (max 3)</Label>
               <div className="flex gap-2 mt-2 flex-wrap">
                 {photos.map((url, i) => (
@@ -125,7 +128,7 @@ export default function PromotionsPage() {
                 )}
               </div>
               <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} />
-            </div>
+            </div>}
 
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Start Date *</Label><Input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} /></div>
