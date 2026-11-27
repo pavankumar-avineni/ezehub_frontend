@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatDate, formatCurrency } from '@/lib/utils';
+import { useFeature } from '@/hooks/useFeature';
+import { FEATURE } from '@/lib/features';
 
 const initialForm = {
   bedId: '', firstName: '', lastName: '', email: '', phone: '', gender: 'MALE',
@@ -45,6 +47,7 @@ function getAvatarColor(name) {
 }
 
 export default function ResidentsPage() {
+  const hasDocuments = useFeature(FEATURE.DOCUMENTS);
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
@@ -76,7 +79,7 @@ export default function ResidentsPage() {
     onSuccess: (response) => { 
       queryClient.invalidateQueries({ queryKey: ['residents'] }); 
       queryClient.invalidateQueries({ queryKey: ['available-beds'] });
-      if (proofFiles.length > 0 && response.data?.data?.id) {
+      if (hasDocuments && proofFiles.length > 0 && response.data?.data?.id) {
         proofFiles.forEach(file => {
           const formData = new FormData();
           formData.append('file', file);
@@ -231,11 +234,11 @@ export default function ResidentsPage() {
                     </select>
                   </div>
                   <div className="space-y-1"><Label>ID Number</Label><Input value={form.idProofNumber} onChange={(e) => setForm({ ...form, idProofNumber: e.target.value })} placeholder="ID proof number" /></div>
-                  <div className="space-y-1 col-span-2">
+                  {hasDocuments && <div className="space-y-1 col-span-2">
                     <Label>Upload Proof Documents (Photos/PDFs)</Label>
                     <Input type="file" ref={fileRef} multiple accept=".pdf,.jpg,.jpeg,.png" onChange={handleFileChange} />
                     {proofFiles.length > 0 && <p className="text-xs text-blue-600">{proofFiles.length} file(s) selected — will be uploaded to Cloudinary</p>}
-                  </div>
+                  </div>}
                 </div>
               </div>
               <div>

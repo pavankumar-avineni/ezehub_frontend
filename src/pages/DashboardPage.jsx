@@ -4,8 +4,12 @@ import api from '@/lib/api';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatCard } from '@/components/shared/StatCard';
 import { formatCurrency } from '@/lib/utils';
+import { useFeature } from '@/hooks/useFeature';
+import { FEATURE } from '@/lib/features';
 
 export default function DashboardPage() {
+  const hasStaff = useFeature(FEATURE.STAFF);
+  const hasComplaints = useFeature(FEATURE.COMPLAINTS);
   const { data, isLoading } = useQuery({
     queryKey: ['tenant-dashboard'],
     queryFn: async () => (await api.get('/tenant/dashboard')).data.data,
@@ -21,8 +25,8 @@ export default function DashboardPage() {
           <StatCard title="Buildings" value={data?.totalBuildings ?? 0} icon={Building2} />
           <StatCard title="Active Residents" value={data?.activeResidents ?? 0} subtitle={`${data?.totalResidents ?? 0} total`} icon={Users} />
           <StatCard title="Occupancy Rate" value={`${data?.occupancyRate ?? 0}%`} icon={BedDouble} />
-          <StatCard title="Staff" value={data?.totalStaff ?? 0} icon={UserCheck} />
-          <StatCard title="Open Complaints" value={data?.openComplaints ?? 0} icon={MessageSquare} />
+          {hasStaff && <StatCard title="Staff" value={data?.totalStaff ?? 0} icon={UserCheck} />}
+          {hasComplaints && <StatCard title="Open Complaints" value={data?.openComplaints ?? 0} icon={MessageSquare} />}
           <StatCard title="Pending Rent" value={formatCurrency(data?.pendingRent)} icon={IndianRupee} />
         </div>
       )}

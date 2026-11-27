@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '@/lib/api';
+import { errorMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
@@ -53,14 +54,7 @@ export function ErrorText({ error }) {
   return msg ? <p className="text-sm text-red-500">{msg}</p> : null;
 }
 
-export function errorMessage(error) {
-  if (!error) return '';
-  const data = error.response?.data;
-  if (data?.errors?.length) {
-    return data.errors.map((e) => (e.field ? `${e.field}: ${e.message}` : e.message)).join(', ');
-  }
-  return data?.message || error.message || 'Something went wrong';
-}
+export { errorMessage };
 
 export function useInvalidateInventory() {
   const queryClient = useQueryClient();

@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { formatDate } from '@/lib/utils';
+import { useFeature } from '@/hooks/useFeature';
+import { FEATURE } from '@/lib/features';
 
 function DetailField({ label, value }) {
   return (
@@ -21,6 +23,7 @@ function DetailField({ label, value }) {
 }
 
 export default function ComplaintsPage() {
+  const hasStaff = useFeature(FEATURE.STAFF); // staff list is a separate add-on
   const [open, setOpen] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -48,6 +51,7 @@ export default function ComplaintsPage() {
   const { data: staffList } = useQuery({
     queryKey: ['staff-list'],
     queryFn: async () => (await api.get('/tenant/staff', { params: { limit: 100 } })).data.data,
+    enabled: hasStaff,
   });
 
   const { data: detailData, isLoading: detailLoading } = useQuery({
@@ -269,8 +273,8 @@ export default function ComplaintsPage() {
                 </div>
               </div>
 
-              {/* Staff Assignment */}
-              <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+              {/* Staff Assignment (needs the Staff add-on) */}
+              {hasStaff && <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
                 <p className="text-blue-700 dark:text-blue-300 font-semibold text-xs uppercase tracking-wider mb-2">Assign Staff</p>
                 <div className="flex gap-2">
                   <select
@@ -291,7 +295,7 @@ export default function ComplaintsPage() {
                     {assignMutation.isPending ? 'Assigning...' : 'Assign'}
                   </Button>
                 </div>
-              </div>
+              </div>}
 
               {/* Status Update & Resolution */}
               <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-3">
