@@ -7,6 +7,9 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { ErrorText, Field, SectionTitle } from '@/components/inventory/common';
 import { FeatureChecklist, dependencyProblems } from '@/components/billing/shared';
 import { fieldErrors } from '@/lib/errors';
+import { useCan } from '@/hooks/useFeature';
+import { PERM } from '@/lib/permissions';
+import { EmployeeSelect } from '@/components/team/common';
 import { formatINR, isCoreFeature } from '@/lib/features';
 
 const EMPTY = { name: '', email: '', phone: '', address: '', city: '', state: '', pincode: '', adminFirstName: '', adminLastName: '', adminEmail: '', adminPassword: '' };
@@ -20,17 +23,36 @@ export default function CreateTenantDialog({ open, onOpenChange }) {
   const [features, setFeatures] = useState([]);
   const [featuresTouched, setFeaturesTouched] = useState(false);
 
-  const { data: settings } = useQuery({
+  const { can } = useCan();
+  const canSeeBilling = can(PERM.BILLING_READ);
+  const canPrice = can(PERM.PRICING_MANAGE);
+  const canAssign = can(PERM.ASSIGN_TENANTS);
+  const [accountManagerId, setAccountManagerId] = useState('');
+
+  // Billing readers use the admin settings/catalog. Everyone else falls back to the public pricing.
+  const { data: adminSettings } = useQuery({
     queryKey: ['billing-settings'],
     queryFn: async () => (await api.get('/subscription/admin/settings')).data.data,
-    enabled: open,
+    enabled: open && canSeeBilling,
   });
-  const { data: catalog } = useQuery({
+  const { data: adminCatalog } = useQuery({
     queryKey: ['admin-features'],
     queryFn: async () => (await api.get('/subscription/admin/features')).data.data,
-    enabled: open,
+    enabled: open && canSeeBilling,
   });
-
+  const { data: publicPricing } = useQuery({
+    queryKey: ['public-pricing'],
+    queryFn: async () => (await api.get('/subscription/pricing')).data.data,
+    enabled: open && !canSeeBilling,
+  });
+  // Memoised so the form-reset effect below only runs when the source data changes.
+  const settings = useMemo(
+    () => (canSeeBilling
+      ? adminSettings
+      : publicPricing && { defaultRatePerBed: publicPricing.ratePerBed, trialDays: publicPricing.trialDays, defaultFeatures: [] }),
+    [canSeeBilling, adminSettings, publicPricing]
+  );
+  const catalog = canSeeBilling ? adminCatalog : publicPricing?.features;
   useEffect(() => {
     if (open && settings) {
       setForm(EMPTY);
@@ -109,6 +131,16 @@ export default function CreateTenantDialog({ open, onOpenChange }) {
             </div>
           </div>
 
+          {canAssign && (
+            <div>
+              <SectionTitle>Account manager</SectionTitle>
+              <Field label="Maintained by (defaults to you)" error={errs.accountManagerId}>
+                <EmployeeSelect value={accountManagerId} onChange={setAccountManagerId} emptyLabel="Me (default)" />
+              </Field>
+            </div>
+          )}
+
+          {canPrice ? (
           <div>
             <SectionTitle>2. Pricing</SectionTitle>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -125,6 +157,11 @@ export default function CreateTenantDialog({ open, onOpenChange }) {
               </Field>
             </div>
           </div>
+          ) : (
+            <p className="rounded-xl bg-slate-500/10 px-3 py-2 text-xs text-slate-600 dark:text-slate-300">
+              The platform default rate ({formatINR(defaultRate)} per bed) and a {settings?.trialDays ?? 0}-day trial apply. Changing pricing needs the pricing permission.
+            </p>
+          )}
 
           <div>
             <SectionTitle>3. Features</SectionTitle>

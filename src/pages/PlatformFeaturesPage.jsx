@@ -10,7 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ErrorText, Field, NativeSelect, Pagination, SectionTitle, formatDateTime, label, textareaClass } from '@/components/inventory/common';
 import { groupFeatures, ReadOnlyNote } from '@/components/billing/shared';
-import { useIsSuperAdmin } from '@/hooks/useFeature';
+import { useCan } from '@/hooks/useFeature';
+import { PERM } from '@/lib/permissions';
 import { fieldErrors } from '@/lib/errors';
 import { PRICE_TYPE_LABEL, formatINR, isCoreFeature } from '@/lib/features';
 
@@ -141,7 +142,7 @@ function EditFeatureDialog({ feature, onClose, canEdit, onSaved }) {
 }
 
 export default function PlatformFeaturesPage() {
-  const canEdit = useIsSuperAdmin();
+  const canEdit = useCan().can(PERM.PRICING_MANAGE);
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(null);
   const [historyOpen, setHistoryOpen] = useState(false);

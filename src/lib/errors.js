@@ -1,4 +1,4 @@
-export const INSUFFICIENT_ROLE_MESSAGE = 'Only a super admin can make this change. Your account has view-only access.';
+export const INSUFFICIENT_ROLE_MESSAGE = 'You do not have permission to make this change.';
 
 export function getErrorBody(error) {
   return error?.response?.data || null;
@@ -7,6 +7,11 @@ export function getErrorBody(error) {
 export function isFeatureLockedError(error) {
   const e = error?.response?.data?.errors;
   return error?.response?.status === 403 && Array.isArray(e) && e.some((x) => x?.code === 'FEATURE_NOT_ENABLED');
+}
+
+export function isPasswordChangeRequired(error) {
+  const e = error?.response?.data?.errors;
+  return error?.response?.status === 403 && Array.isArray(e) && e.some((x) => x?.code === 'PASSWORD_CHANGE_REQUIRED');
 }
 
 export function lockedFeatureCode(error) {

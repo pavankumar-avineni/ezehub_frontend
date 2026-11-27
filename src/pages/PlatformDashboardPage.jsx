@@ -5,21 +5,31 @@ import api from '@/lib/api';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatCard } from '@/components/shared/StatCard';
 import { formatINR } from '@/lib/features';
+import { useCan } from '@/hooks/useFeature';
+import { PERM } from '@/lib/permissions';
+import { Link } from 'react-router-dom';
 
 const COLORS = ['#8b5cf6', '#10b981', '#ef4444', '#94a3b8'];
 const tooltipStyle = { borderRadius: '12px', border: '1px solid rgba(59,130,246,0.2)', backdropFilter: 'blur(10px)', background: 'rgba(255,255,255,0.9)' };
 
 export default function PlatformDashboardPage() {
+  const { can } = useCan();
+  // Both analytics endpoints need analytics + view-all-tenants. Without them no request is made.
+  const allowed = can(PERM.ANALYTICS) && can(PERM.VIEW_ALL_TENANTS);
   const { data, isLoading } = useQuery({
     queryKey: ['platform-analytics'],
+    enabled: allowed,
     queryFn: async () => (await api.get('/platform/tenants/analytics')).data.data,
   });
   const { data: billing } = useQuery({
     queryKey: ['subscription-analytics'],
+    enabled: allowed,
     queryFn: async () => (await api.get('/subscription/admin/analytics')).data.data,
   });
 
   const statusData = (data?.subscriptionBreakdown || []).map((s) => ({ name: s.status, value: Number(s.count) || 0 })).filter((s) => s.value > 0);
+
+  if (!allowed) return <TeamHome />;
 
   return (
     <div>
@@ -80,6 +90,25 @@ export default function PlatformDashboardPage() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+
+function TeamHome() {
+  const { can } = useCan();
+  const links = [
+    [PERM.TENANTS_READ, '/tenants', 'Tenants'], [PERM.EMPLOYEES_READ, '/employees', 'Employees'],
+    [PERM.REPORTS_READ, '/team-report', 'Team report'], [PERM.AUDIT_READ, '/activity', 'Activity log'],
+  ].filter(([p]) => can(p));
+  return (
+    <div>
+      <PageHeader title="Welcome" description="Platform team workspace" />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {links.map(([, to, label]) => (
+          <Link key={to} to={to} className="glass-card p-6 text-center font-semibold text-slate-800 dark:text-white hover:scale-[1.02] transition-transform">{label}</Link>
+        ))}
+      </div>
     </div>
   );
 }

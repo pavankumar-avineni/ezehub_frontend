@@ -11,6 +11,7 @@ export const useAuthStore = create(
       setAuth: ({ user, accessToken, refreshToken }) =>
         set({ user, accessToken, refreshToken, loginAt: Date.now() }),
       setTokens: (accessToken, refreshToken) => set({ accessToken, refreshToken }),
+      updateUser: (patch) => set((s) => (s.user ? { user: { ...s.user, ...patch } } : s)),
       setEnabledFeatures: (enabledFeatures) =>
         set((s) => (s.user ? { user: { ...s.user, enabledFeatures } } : s)),
       logout: () => set({ user: null, accessToken: null, refreshToken: null, loginAt: null }),

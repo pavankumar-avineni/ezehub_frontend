@@ -2,7 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, Users, Building2, IndianRupee, MessageSquare, UserCog,
-  Wallet, LogOut, Moon, Sun, ChevronLeft, ChevronRight, UserCheck, Package, Lock, SlidersHorizontal, ToggleRight,
+  Wallet, LogOut, Moon, Sun, ChevronLeft, ChevronRight, UserCheck, Package, Lock, SlidersHorizontal, ToggleRight, Network, BarChart3, History, KeyRound,
   Wrench, FileText, Bell, DoorOpen, Bed, CreditCard, Settings, Percent, Megaphone, UtensilsCrossed, Shield, Map,
 } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import api from '@/lib/api';
 import { useState, useEffect } from 'react';
 import { FEATURE, ROLES_PERMISSION, isCoreFeature } from '@/lib/features';
+import { PERM } from '@/lib/permissions';
 import { useEnabledFeatures } from '@/hooks/useFeature';
 import { TrialBanner } from '@/components/shared/TrialBanner';
 
@@ -41,10 +42,16 @@ const tenantNavItems = [
 // Platform (super admin) navigation — shown when scope === 'PLATFORM'.
 const platformNavItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard', permission: null },
-  { to: '/tenants', icon: Building2, label: 'Tenants', permission: null },
-  { to: '/billing', icon: CreditCard, label: 'Billing', permission: null },
-  { to: '/billing-settings', icon: SlidersHorizontal, label: 'Billing Settings', permission: null },
-  { to: '/features', icon: ToggleRight, label: 'Feature Catalog', permission: null },
+  { to: '/tenants', icon: Building2, label: 'Tenants', permission: PERM.TENANTS_READ },
+  { to: '/employees', icon: Users, label: 'Employees', permission: PERM.EMPLOYEES_READ },
+  { to: '/org-chart', icon: Network, label: 'Org Chart', permission: PERM.EMPLOYEES_READ },
+  { to: '/platform-roles', icon: Shield, label: 'Roles & Access', permission: PERM.ROLES_MANAGE },
+  { to: '/team-report', icon: BarChart3, label: 'Team Report', permission: PERM.REPORTS_READ },
+  { to: '/activity', icon: History, label: 'Activity Log', permission: PERM.AUDIT_READ },
+  { to: '/sign-ins', icon: KeyRound, label: 'Sign-in History', permission: PERM.AUDIT_READ },
+  { to: '/billing', icon: CreditCard, label: 'Billing', permission: PERM.BILLING_READ },
+  { to: '/billing-settings', icon: SlidersHorizontal, label: 'Billing Settings', permission: PERM.BILLING_READ },
+  { to: '/features', icon: ToggleRight, label: 'Feature Catalog', permission: PERM.BILLING_READ },
 ];
 
 export function DashboardLayout() {
@@ -164,6 +171,11 @@ export function DashboardLayout() {
                 {getInitials(user?.firstName, user?.lastName)}
               </AvatarFallback>
             </Avatar>
+            {isPlatform && (
+              <Button variant="ghost" size="icon" title="Change password" aria-label="Change password" className="rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/30 text-slate-500 hover:text-blue-600" onClick={() => navigate('/change-password')}>
+                <KeyRound className="h-4 w-4" />
+              </Button>
+            )}
             <Button variant="ghost" size="icon" className="rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/30 text-slate-500 hover:text-blue-600" onClick={handleLogout}>
               <LogOut className="h-4 w-4" />
             </Button>

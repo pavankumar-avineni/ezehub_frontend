@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ErrorText, Field, SectionTitle } from '@/components/inventory/common';
 import { FeatureChecklist, ReadOnlyNote, dependencyProblems } from '@/components/billing/shared';
-import { useIsSuperAdmin } from '@/hooks/useFeature';
+import { useCan } from '@/hooks/useFeature';
+import { PERM } from '@/lib/permissions';
 import { fieldErrors } from '@/lib/errors';
 import { formatINR, isCoreFeature } from '@/lib/features';
 import { formatDateTime } from '@/components/inventory/common';
@@ -16,7 +17,7 @@ import { formatDateTime } from '@/components/inventory/common';
 const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
 
 export default function PlatformSettingsPage() {
-  const canEdit = useIsSuperAdmin();
+  const canEdit = useCan().can(PERM.PRICING_MANAGE);
   const queryClient = useQueryClient();
   const [form, setForm] = useState(null);
   const [applyExisting, setApplyExisting] = useState(false);

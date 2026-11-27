@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { FeatureRoute, PermissionRoute } from '@/components/shared/FeatureGate';
 import { LockedFeatureModal } from '@/components/shared/LockedFeature';
 import { FEATURE, ROLES_PERMISSION } from '@/lib/features';
-import { refreshEnabledFeatures } from '@/lib/api';
+import { refreshEnabledFeatures, refreshPlatformProfile } from '@/lib/api';
 import PricingPage from '@/pages/PricingPage';
 import { ProtectedRoute, PublicRoute } from '@/components/shared/ProtectedRoute';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -39,26 +39,49 @@ import PlatformBillingPage from '@/pages/PlatformBillingPage';
 import PlatformTenantDetailPage from '@/pages/PlatformTenantDetailPage';
 import PlatformSettingsPage from '@/pages/PlatformSettingsPage';
 import PlatformFeaturesPage from '@/pages/PlatformFeaturesPage';
+import EmployeesPage from '@/pages/EmployeesPage';
+import EmployeeDetailPage from '@/pages/EmployeeDetailPage';
+import OrgChartPage from '@/pages/OrgChartPage';
+import PlatformRolesPage from '@/pages/PlatformRolesPage';
+import TeamReportPage from '@/pages/TeamReportPage';
+import ActivityLogPage from '@/pages/ActivityLogPage';
+import LoginHistoryPage from '@/pages/LoginHistoryPage';
+import ChangePasswordPage from '@/pages/ChangePasswordPage';
+import { RequirePermission } from '@/components/team/common';
+import { PERM } from '@/lib/permissions';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30000 } },
 });
 
-// Routes available to a platform super admin.
+// Routes for platform employees. Every page is guarded by permissions (never by role names).
+const guard = (any, el) => <RequirePermission any={any}>{el}</RequirePermission>;
 function PlatformRoutes() {
   return (
     <Route element={<DashboardLayout />}>
       <Route index element={<PlatformDashboardPage />} />
-      <Route path="tenants" element={<PlatformTenantsPage />} />
-      <Route path="tenants/:id" element={<PlatformTenantDetailPage />} />
-      <Route path="billing" element={<PlatformBillingPage />} />
-      <Route path="billing-settings" element={<PlatformSettingsPage />} />
-      <Route path="features" element={<PlatformFeaturesPage />} />
+      <Route path="tenants" element={guard([PERM.TENANTS_READ], <PlatformTenantsPage />)} />
+      <Route path="tenants/:id" element={guard([PERM.TENANTS_READ], <PlatformTenantDetailPage />)} />
+      <Route path="employees" element={guard([PERM.EMPLOYEES_READ], <EmployeesPage />)} />
+      <Route path="employees/:id" element={guard([PERM.EMPLOYEES_READ], <EmployeeDetailPage />)} />
+      <Route path="org-chart" element={guard([PERM.EMPLOYEES_READ], <OrgChartPage />)} />
+      <Route path="platform-roles" element={guard([PERM.ROLES_MANAGE], <PlatformRolesPage />)} />
+      <Route path="team-report" element={guard([PERM.REPORTS_READ], <TeamReportPage />)} />
+      <Route path="activity" element={guard([PERM.AUDIT_READ], <ActivityLogPage />)} />
+      <Route path="sign-ins" element={guard([PERM.AUDIT_READ], <LoginHistoryPage />)} />
+      <Route path="billing" element={guard([PERM.BILLING_READ], <PlatformBillingPage />)} />
+      <Route path="billing-settings" element={guard([PERM.BILLING_READ], <PlatformSettingsPage />)} />
+      <Route path="features" element={guard([PERM.BILLING_READ], <PlatformFeaturesPage />)} />
+      <Route path="change-password" element={<ChangePasswordPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Route>
   );
 }
 
+// A new employee must replace the temporary password before anything else.
+function ForcedPasswordRoutes() {
+  return <Route path="*" element={<ChangePasswordPage forced />} />;
+}
 // Routes available to a tenant user (PG admin / staff).
 function TenantRoutes({ hasRoles }) {
   return (
@@ -97,7 +120,11 @@ function AppRoutes() {
   const token = useAuthStore((s) => s.accessToken);
 
   // Refresh the enabled feature list on app start (tenant users).
-  useEffect(() => { if (token && !isPlatform) refreshEnabledFeatures(); }, [token, isPlatform]);
+  useEffect(() => {
+    if (!token) return;
+    if (isPlatform) refreshPlatformProfile(); else refreshEnabledFeatures();
+  }, [token, isPlatform]);
+  const mustChangePassword = useAuthStore((s) => isPlatform && !!s.user?.mustChangePassword);
 
   return (
     <Routes>
@@ -106,7 +133,7 @@ function AppRoutes() {
         <Route path="/login" element={<LoginPage />} />
       </Route>
       <Route element={<ProtectedRoute />}>
-        {isPlatform ? PlatformRoutes() : TenantRoutes({ hasRoles })}
+        {isPlatform ? (mustChangePassword ? ForcedPasswordRoutes() : PlatformRoutes()) : TenantRoutes({ hasRoles })}
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
