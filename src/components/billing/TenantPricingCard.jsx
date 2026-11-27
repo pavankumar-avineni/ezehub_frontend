@@ -110,7 +110,7 @@ function TrialDialog({ tenantId, pricing, open, onOpenChange }) {
   );
 }
 
-export default function TenantPricingCard({ tenantId, pricing, canEdit, onGenerate }) {
+export default function TenantPricingCard({ tenantId, pricing, canEdit, canGenerate, onGenerate }) {
   const [rateOpen, setRateOpen] = useState(false);
   const [trialOpen, setTrialOpen] = useState(false);
   const sub = pricing.subscription;
@@ -120,7 +120,7 @@ export default function TenantPricingCard({ tenantId, pricing, canEdit, onGenera
     <div className="glass-card p-6 space-y-6">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <h3 className="text-lg font-semibold text-slate-800 dark:text-white">Pricing</h3>
-        <Button variant="outline" size="sm" onClick={onGenerate} disabled={!canEdit}>Generate Invoice</Button>
+        <Button variant="outline" size="sm" onClick={onGenerate} disabled={!canGenerate} title={canGenerate ? '' : 'Needs the billing management permission'}>Generate Invoice</Button>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3">

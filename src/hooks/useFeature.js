@@ -1,5 +1,6 @@
 import { useAuthStore } from '@/stores/authStore';
 import { isCoreFeature } from '@/lib/features';
+import { has, hasAny } from '@/lib/permissions';
 
 const EMPTY = [];
 
@@ -24,6 +25,12 @@ export function usePermission(code) {
   return useAuthStore((s) => (s.user?.permissions || []).includes(code));
 }
 
-export function useIsSuperAdmin() {
-  return useAuthStore((s) => s.user?.role?.code === 'platform-super-admin');
+/** Permission helpers for platform employees: can(code) / canAny(...codes). */
+export function useCan() {
+  const permissions = useAuthStore((s) => s.user?.permissions);
+  return {
+    can: (code) => has(permissions, code),
+    canAny: (...codes) => hasAny(permissions, codes),
+    permissions: permissions || [],
+  };
 }

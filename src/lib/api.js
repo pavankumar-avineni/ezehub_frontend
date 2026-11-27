@@ -1,7 +1,15 @@
 import axios from 'axios';
 import { useAuthStore } from '@/stores/authStore';
 import { useFeatureStore } from '@/stores/featureStore';
-import { isFeatureLockedError, lockedFeatureCode } from '@/lib/errors';
+import { isFeatureLockedError, lockedFeatureCode, isPasswordChangeRequired } from '@/lib/errors';
+
+export const LOGIN_MESSAGE_KEY = 'ezehub-login-message';
+
+/** End the session and show a message on the login page. */
+export function endSession(message) {
+  if (message) sessionStorage.setItem(LOGIN_MESSAGE_KEY, message);
+  useAuthStore.getState().logout();
+}
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
@@ -30,6 +38,19 @@ export async function refreshEnabledFeatures() {
   }
 }
 
+/** Reload the signed-in platform employee (permissions, role, mustChangePassword) from the profile. */
+export async function refreshPlatformProfile() {
+  const { user } = useAuthStore.getState();
+  if (!user || user.scope !== 'PLATFORM') return;
+  try {
+    const { data } = await api.get('/auth/profile');
+    const p = data?.data || {};
+    const patch = {};
+    ['permissions', 'role', 'employeeCode', 'department', 'designation', 'employeeStatus', 'mustChangePassword', 'firstName', 'lastName'].forEach((k) => { if (p[k] !== undefined) patch[k] = p[k]; });
+    useAuthStore.getState().updateUser(patch);
+  } catch { /* a 401 here already ends the session */ }
+}
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -50,7 +71,14 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    if (error.response?.status === 401 && !original._retry) {
+    // Temporary password still in place: only the change-password screen may be used.
+    if (isPasswordChangeRequired(error)) {
+      useAuthStore.getState().updateUser({ mustChangePassword: true });
+      return Promise.reject(error);
+    }
+
+    const isAuthCall = /\/auth\/(login|refresh|platform\/login|tenant\/login)/.test(original?.url || '');
+    if (error.response?.status === 401 && !original._retry && !isAuthCall) {
       original._retry = true;
       const refreshToken = useAuthStore.getState().refreshToken;
       if (refreshToken) {
@@ -60,9 +88,14 @@ api.interceptors.response.use(
           original.headers.Authorization = `Bearer ${data.data.accessToken}`;
           return api(original);
         } catch {
-          useAuthStore.getState().logout();
+          endSession('Your session has ended. Please sign in again.');
         }
+      } else {
+        endSession('Your session has ended. Please sign in again.');
       }
+    } else if (error.response?.status === 401 && original._retry && !isAuthCall) {
+      // Still unauthorised after a refresh: the account was disabled or signed out.
+      endSession(error.response?.data?.message || 'Your session has ended. Please sign in again.');
     }
     return Promise.reject(error);
   }

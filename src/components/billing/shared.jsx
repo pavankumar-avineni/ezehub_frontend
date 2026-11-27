@@ -166,7 +166,7 @@ export function ReadOnlyNote({ show }) {
   if (!show) return null;
   return (
     <p className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-      <Lock className="h-3.5 w-3.5" /> View-only access. Only a super admin can make changes.
+      <Lock className="h-3.5 w-3.5" /> View-only access. Your role does not include permission to change this.
     </p>
   );
 }

@@ -30,9 +30,6 @@ export const CORE_FEATURES = [
 
 export const isCoreFeature = (code) => CORE_FEATURES.includes(code);
 
-/** Superadmin role code on the platform. */
-export const PLATFORM_SUPER_ADMIN = 'platform-super-admin';
-
 /** Permission required for the tenant Roles page. */
 export const ROLES_PERMISSION = 'roles:manage';
 

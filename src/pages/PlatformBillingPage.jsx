@@ -13,13 +13,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatDate } from '@/lib/utils';
 import { formatINR } from '@/lib/features';
-import { useIsSuperAdmin } from '@/hooks/useFeature';
+import { useCan } from '@/hooks/useFeature';
+import { PERM } from '@/lib/permissions';
 import { ErrorText, NativeSelect } from '@/components/inventory/common';
 import { InvoiceDetail, ReadOnlyNote } from '@/components/billing/shared';
 import GenerateInvoiceDialog from '@/components/billing/GenerateInvoiceDialog';
 
 export default function PlatformBillingPage() {
-  const canEdit = useIsSuperAdmin();
+  const { can } = useCan();
+  const canManage = can(PERM.BILLING_MANAGE); // generate, confirm, reject, hold
+  const canDismiss = can(PERM.TENANTS_DELETE);
   const [selectedTenantId, setSelectedTenantId] = useState('');
   const [rejectDialog, setRejectDialog] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -30,6 +33,7 @@ export default function PlatformBillingPage() {
   const { data: analytics } = useQuery({
     queryKey: ['subscription-analytics'],
     queryFn: async () => (await api.get('/subscription/admin/analytics')).data.data,
+    enabled: can(PERM.ANALYTICS) && can(PERM.VIEW_ALL_TENANTS),
   });
 
   const { data: tenants } = useQuery({
@@ -37,10 +41,11 @@ export default function PlatformBillingPage() {
     queryFn: async () => (await api.get('/platform/tenants', { params: { limit: 200 } })).data.data,
   });
 
-  const { data: invoices, isLoading } = useQuery({
+  const { data: invoices, isLoading, error: invoicesError } = useQuery({
     queryKey: ['tenant-invoices', selectedTenantId],
     queryFn: async () => (await api.get(`/subscription/admin/invoices/${selectedTenantId}`)).data.data,
     enabled: !!selectedTenantId,
+    retry: false,
   });
 
   const refresh = () => {
@@ -71,7 +76,7 @@ export default function PlatformBillingPage() {
   return (
     <div>
       <PageHeader title="Billing & Subscriptions" description="Generate invoices, confirm payments, manage tenant access" />
-      <div className="mb-4"><ReadOnlyNote show={!canEdit} /></div>
+      <div className="mb-4"><ReadOnlyNote show={!canManage} /></div>
 
       {analytics && (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 mb-8">
@@ -96,17 +101,24 @@ export default function PlatformBillingPage() {
           {selectedTenantId && (
             <>
               <Button variant="outline" asChild><Link to={`/tenants/${selectedTenantId}`}>Billing & Features</Link></Button>
-              {canEdit && (
+              {canManage && (
                 <>
                   <Button onClick={() => setGenerateOpen(true)}><Plus className="h-4 w-4" /> Generate Invoice</Button>
                   <Button variant="outline" onClick={() => holdMutation.mutate(selectedTenantId)} disabled={holdMutation.isPending}>Hold</Button>
-                  <Button variant="destructive" onClick={() => { if (confirm('Permanently dismiss this tenant?')) dismissMutation.mutate(selectedTenantId); }}>Dismiss</Button>
                 </>
+              )}
+              {canDismiss && (
+                <Button variant="destructive" onClick={() => { if (confirm('Permanently dismiss this tenant?')) dismissMutation.mutate(selectedTenantId); }}>Dismiss</Button>
               )}
             </>
           )}
         </div>
-        <div className="mt-2"><ErrorText error={confirmMutation.error || holdMutation.error || dismissMutation.error} /></div>
+        <div className="mt-2">
+          <ErrorText error={confirmMutation.error || holdMutation.error || dismissMutation.error} />
+          {invoicesError?.response?.status === 404
+            ? <p className="text-sm text-red-500">Tenant not found or not assigned to you.</p>
+            : <ErrorText error={invoicesError} />}
+        </div>
       </div>
 
       {selectedTenantId && (
@@ -137,7 +149,7 @@ export default function PlatformBillingPage() {
                           {inv.transactionId && <p className="text-xs text-slate-500">TXN: {inv.transactionId}</p>}
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
-                          {canEdit && (inv.status === 'PENDING' || inv.status === 'PARTIAL') && inv.transactionId && (
+                          {canManage && (inv.status === 'PENDING' || inv.status === 'PARTIAL') && inv.transactionId && (
                             <div className="flex gap-1">
                               <Button variant="ghost" size="icon" title="Confirm" onClick={() => confirmMutation.mutate(inv.id)}><Check className="h-4 w-4 text-emerald-500" /></Button>
                               <Button variant="ghost" size="icon" title="Reject" onClick={() => setRejectDialog(inv.id)}><X className="h-4 w-4 text-red-500" /></Button>

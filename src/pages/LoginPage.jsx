@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Building2, Users, IndianRupee, Shield, Bed, BarChart3, Utensils, Megaphone, MessageSquare, Bell, ChevronDown, Check, Smartphone, Globe, Zap, ArrowRight, Star, Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
-import api from '@/lib/api';
+import api, { LOGIN_MESSAGE_KEY } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -64,8 +64,11 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [showLogin, setShowLogin] = useState(false);
+  // Message left by a forced sign-out (session ended, account disabled...).
+  const [sessionMsg] = useState(() => sessionStorage.getItem(LOGIN_MESSAGE_KEY) || '');
+  useEffect(() => { sessionStorage.removeItem(LOGIN_MESSAGE_KEY); }, []);
+  const [error, setError] = useState(sessionMsg);
+  const [showLogin, setShowLogin] = useState(!!sessionMsg);
   const setAuth = useAuthStore((s) => s.setAuth);
   const { data: pricing } = usePublicPricing();
   const trialLabel = pricing?.trialDays > 0 ? `${pricing.trialDays}-day free trial` : 'Free to start';
@@ -80,7 +83,7 @@ export default function LoginPage() {
       setAuth(data.data);
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      setError(errorMessage(err) || 'Login failed');
     } finally {
       setLoading(false);
     }
