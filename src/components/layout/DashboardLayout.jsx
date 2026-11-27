@@ -61,6 +61,13 @@ export function DashboardLayout() {
   const navigate = useNavigate();
 
   const enabledFeatures = useEnabledFeatures();
+  // Own profile (photo and name). Shared with the Profile page through the ['me'] cache entry.
+  const { data: me } = useQuery({
+    queryKey: ['me'],
+    queryFn: async () => (await api.get('/auth/me')).data.data,
+    enabled: !!user,
+    staleTime: 60000,
+  });
   const { data: unread } = useQuery({
     queryKey: ['notifications-unread'],
     queryFn: async () => (await api.get('/tenant/notifications', { params: { limit: 1 } })).data.data?.unreadCount ?? 0,
@@ -162,20 +169,21 @@ export function DashboardLayout() {
         <header className="flex h-16 items-center justify-between liquid-glass mx-4 mt-4 px-6 rounded-2xl premium-shadow">
           <p className="text-sm font-semibold text-blue-900/70 dark:text-blue-200/70">{orgLabel}</p>
           <div className="flex items-center gap-4">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{user?.firstName} {user?.lastName}</p>
-              <p className="text-xs text-blue-600/60 dark:text-blue-400/60 font-medium">{user?.role?.name}</p>
-            </div>
-            <Avatar className="ring-2 ring-blue-400/30 ring-offset-2 ring-offset-transparent shadow-lg">
-              <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-700 text-white font-semibold text-sm">
-                {getInitials(user?.firstName, user?.lastName)}
-              </AvatarFallback>
-            </Avatar>
-            {isPlatform && (
-              <Button variant="ghost" size="icon" title="Change password" aria-label="Change password" className="rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/30 text-slate-500 hover:text-blue-600" onClick={() => navigate('/change-password')}>
-                <KeyRound className="h-4 w-4" />
-              </Button>
-            )}
+            <button type="button" onClick={() => navigate('/profile')} title="My profile" className="flex items-center gap-3 rounded-xl px-2 py-1 transition-colors hover:bg-blue-50/80 dark:hover:bg-blue-900/30">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{me?.firstName ?? user?.firstName} {me?.lastName ?? user?.lastName}</p>
+                <p className="text-xs text-blue-600/60 dark:text-blue-400/60 font-medium">{user?.role?.name}</p>
+              </div>
+              {(me?.avatar || user?.avatar) ? (
+                <img src={me?.avatar || user?.avatar} alt="" className="h-10 w-10 rounded-full object-cover ring-2 ring-blue-400/30 ring-offset-2 ring-offset-transparent shadow-lg" />
+              ) : (
+                <Avatar className="ring-2 ring-blue-400/30 ring-offset-2 ring-offset-transparent shadow-lg">
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-700 text-white font-semibold text-sm">
+                    {getInitials(me?.firstName ?? user?.firstName, me?.lastName ?? user?.lastName)}
+                  </AvatarFallback>
+                </Avatar>
+              )}
+            </button>
             <Button variant="ghost" size="icon" className="rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/30 text-slate-500 hover:text-blue-600" onClick={handleLogout}>
               <LogOut className="h-4 w-4" />
             </Button>

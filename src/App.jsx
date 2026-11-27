@@ -47,6 +47,7 @@ import TeamReportPage from '@/pages/TeamReportPage';
 import ActivityLogPage from '@/pages/ActivityLogPage';
 import LoginHistoryPage from '@/pages/LoginHistoryPage';
 import ChangePasswordPage from '@/pages/ChangePasswordPage';
+import ProfilePage from '@/pages/ProfilePage';
 import { RequirePermission } from '@/components/team/common';
 import { PERM } from '@/lib/permissions';
 
@@ -72,6 +73,7 @@ function PlatformRoutes() {
       <Route path="billing" element={guard([PERM.BILLING_READ], <PlatformBillingPage />)} />
       <Route path="billing-settings" element={guard([PERM.BILLING_READ], <PlatformSettingsPage />)} />
       <Route path="features" element={guard([PERM.BILLING_READ], <PlatformFeaturesPage />)} />
+      <Route path="profile" element={<ProfilePage />} />
       <Route path="change-password" element={<ChangePasswordPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Route>
@@ -108,6 +110,8 @@ function TenantRoutes({ hasRoles }) {
       <Route path="discounts" element={<FeatureRoute code={FEATURE.DISCOUNTS}><DiscountsPage /></FeatureRoute>} />
       <Route path="promotions" element={<FeatureRoute code={FEATURE.PROMOTIONS}><PromotionsPage /></FeatureRoute>} />
       <Route path="food-menu" element={<FeatureRoute code={FEATURE.FOOD_MENU}><FoodMenuPage /></FeatureRoute>} />
+      <Route path="profile" element={<ProfilePage />} />
+      <Route path="change-password" element={<ChangePasswordPage />} />
       <Route path="roles" element={<PermissionRoute allowed={hasRoles}><RolesPage /></PermissionRoute>} />
     </Route>
   );
